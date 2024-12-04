@@ -1,0 +1,58 @@
+# Temporary and backup files
+*~
+*.bak
+*.swp
+*.swo
+
+# Generated simulation and synthesis files
+*.vcd
+*.out
+*.log
+*.jou
+*.str
+*.drc
+*.syn
+*.chk
+*.rpt
+*.rbt
+*.edf
+*.xpr
+*.xml
+
+# Synthesis tool specific files (e.g., Xilinx Vivado, Quartus, ModelSim)
+*.wdb
+*.wcfg
+*.wlf
+*.vvp
+*.lxt*
+*.sav
+*.mpf
+*.qpf
+*.qsf
+*.sdf
+
+# FPGA bitstreams and programming files
+*.bit
+*.bin
+*.mcs
+*.hex
+
+# Directories for build and simulation artifacts
+sim/
+work/
+build/
+out/
+tmp/
+.cache/
+.logs/
+
+# IDE-specific files and directories
+.idea/
+*.iml
+.vscode/
+*.code-workspace
+
+# Files from version control systems or text editors
+.DS_Store
+Thumbs.db
+*.ipch

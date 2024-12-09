@@ -1,0 +1,16 @@
+**** module/scope: ClockDivider
+     Flip-Flops   : 54
+     Logic Gates  : 338
+     ADDER[26]: 2 units
+     MAGNITUDE[32]: 2 units
+     MUX[2]: 52 slices
+     LOG[13]: 1 unaccounted
+     LOG[14]: 1 unaccounted
+**** TOTALS
+     Flip-Flops   : 54
+     Logic Gates  : 338
+     ADDER[26]: 2 units
+     MAGNITUDE[32]: 2 units
+     MUX[2]: 52 slices
+     LOG[13]: 1 unaccounted
+     LOG[14]: 1 unaccounted

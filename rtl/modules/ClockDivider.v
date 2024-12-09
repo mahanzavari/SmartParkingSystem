@@ -1,22 +1,35 @@
 module ClockDivider (
-    input clk_in,
-    output reg clk_out
+    input clk,             // Input clock
+    input reset,           // Reset signal
+    output reg clk_1Hz,    // 1 Hz clock
+    output reg clk_2Hz     // 2 Hz clock
 );
-    parameter INPUT_CLOCK_FREQ = 40_000_000; // Default input clock frequency: 40 MHz
-    parameter DIVISOR = INPUT_CLOCK_FREQ / 2; // Default divisor for 1 Hz output
 
-    reg [25:0] counter = 0;
+    reg [25:0] counter_1Hz;
+    reg [25:0] counter_2Hz;
 
-    initial begin
-        clk_out = 0;
-    end
-
-    always @(posedge clk_in) begin
-        if (counter == DIVISOR - 1) begin
-            counter <= 0;
-            clk_out <= ~clk_out;
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            counter_1Hz <= 0;
+            counter_2Hz <= 0;
+            clk_1Hz <= 0;
+            clk_2Hz <= 0;
         end else begin
-            counter <= counter + 1;
+            // 1 Hz clock generation
+            if (counter_1Hz >= 40_000_000) begin
+                clk_1Hz <= ~clk_1Hz;
+                counter_1Hz <= 0;
+            end else begin
+                counter_1Hz <= counter_1Hz + 1;
+            end
+
+            // 2 Hz clock generation
+            if (counter_2Hz >= 20_000_000) begin
+                clk_2Hz <= ~clk_2Hz;
+                counter_2Hz <= 0;
+            end else begin
+                counter_2Hz <= counter_2Hz + 1;
+            end
         end
     end
 endmodule

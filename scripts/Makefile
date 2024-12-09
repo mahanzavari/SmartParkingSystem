@@ -1,30 +1,34 @@
-## TODO
-## Note that this is simply a test
+# Project directories
+RTL_DIR       := rtl
+MODULES_DIR   := $(RTL_DIR)/modules
+TOP_DIR       := $(RTL_DIR)/top
+TESTBENCH_DIR := testbench
+BUILD_DIR     := build
 
-# Variables
-TOP_MODULE = parking_system
-TESTBENCH = parking_system_tb
-SRC_FILES = $(TOP_MODULE).v
-TB_FILES = $(TESTBENCH).v
-WAVE_FILE = waveform.vcd
-COMPILER = iverilog
-SIMULATOR = vvp
+# Simulator (iverilog, VCS, ModelSim)
+SIMULATOR     := iverilog
+VVP           := vvp
+WAVE_VIEWER   := gtkwave
 
-# Targets
-all: simulate
+# Default target
+default: simulate
 
-# Compile the source and testbench
-compile:
-	$(COMPILER) -o simulation $(SRC_FILES) $(TB_FILES)
+# Compilation step
+$(BUILD_DIR)/design.out: $(MODULES_DIR)/*.v $(TOP_DIR)/*.v $(TESTBENCH_DIR)/main_tb.v
+	@mkdir -p $(BUILD_DIR)
+	$(SIMULATOR) -o $@ $^
 
-# Run the simulation and generate waveforms
-simulate: compile
-	$(SIMULATOR) simulation
+# Simulation step
+simulate: $(BUILD_DIR)/design.out
+	$(VVP) $<
 
-# View waveforms in GTKWave
-view: $(WAVE_FILE)
-	gtkwave $(WAVE_FILE)
+# View waveforms
+wave: $(BUILD_DIR)/design.out
+	$(VVP) $< +dumpfile=$(BUILD_DIR)/main.vcd +dumpvars
+	$(WAVE_VIEWER) $(BUILD_DIR)/main.vcd
 
-# Clean up generated files
+# Clean up build directory
 clean:
-	rm -f simulation $(WAVE_FILE)
+	@rm -rf $(BUILD_DIR)
+
+.PHONY: default simulate wave clean

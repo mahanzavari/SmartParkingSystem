@@ -1,115 +1,263 @@
+// FSM for Parking System (Mealy Machine with 16 states)
 module ParkingFSM (
-    input clk,                  // System clock
-    input reset,                // Reset signal
-    input entry_sensor,         // Entry button/sensor
-    input exit_sensor,          // Exit button/sensor
-    input [3:0] exit_slot,      // Slot number on car exit
-    output reg door_open,       // Door control signal
-    output reg full,            // Parking full indicator
-    output reg [3:0] slot_assigned, // Assigned slot for new car
-    output reg [3:0] available_slots // Number of available slots
+    input wire clk,
+    input wire reset,
+    input wire entry_sensor,         // Signal when a car is entering
+    input wire exit_sensor,          // Signal when a car is exiting
+    input wire [1:0] exit_location,  // Slot being freed up during exit
+    output reg door_open,            // Door control for entry
+    output reg full_light,           // Indicates parking is full
+    output reg [3:0] occupancy,      // Indicates the occupancy of the parking
+    output reg [3:0] current_state,  // Current parking occupancy state
+    output reg [3:0] best_slot       // Suggested slot for entry
 );
 
-    // State encoding
-    localparam IDLE           = 3'b000;
-    localparam SLOT_ASSIGN    = 3'b010;
-    localparam EXIT_CHECK     = 3'b011;
-    localparam DOOR_FLASH     = 3'b100;
-    localparam FULL_FLASH     = 3'b101;
+    reg [3:0] next_state;
 
-    // State registers
-    reg [2:0] current_state, next_state;
-
-    // Timer for flashing lights
-    reg [23:0] timer;
-
-    // Slot availability register (1 = occupied, 0 = free)
-    reg [3:0] slot_status;
-
-    initial begin
-        current_state = IDLE;
-        available_slots = 4;    // All slots initially available
-        slot_status = 4'b0000;  // All slots are free
-        full = 0;
-        door_open = 0;
-        timer = 0;
-    end
-
-    // State transition logic
+    // State Transition Logic (Sequential Logic)
     always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            current_state <= IDLE;
-            timer <= 0;
-        end else begin
+        if (reset)
+            current_state <= 4'b0000; // Reset to all slots empty
+            occupancy <= 4'b0000;
+        else
             current_state <= next_state;
-            if (current_state == DOOR_FLASH || current_state == FULL_FLASH)
-                timer <= timer + 1;
-            else
-                timer <= 0;
-        end
     end
 
-    // Next state and output logic
+    // Combinational Logic: Next State and Output Logic (Mealy Machine)
     always @(*) begin
-        // Default values
+        // Default Outputs
         next_state = current_state;
-        door_open = 0;
-        full = (available_slots == 0); // if all slots are occupied, set full to 1
-        slot_assigned = 4'b0000;
+        door_open = 1'b0;
+        full_light = 1'b0;
+        best_slot = 4'b0000;
 
         case (current_state)
-            IDLE: begin
-                if (entry_sensor && available_slots > 0)
-                    next_state = SLOT_ASSIGN;
-                else if (entry_sensor && available_slots == 0)
-                    next_state = FULL_FLASH;
-                else if (exit_sensor)
-                    next_state = EXIT_CHECK;
-            end
-
-            // ENTRY_CHECK: begin
-            //     next_state = SLOT_ASSIGN;
-            // end
-
-            SLOT_ASSIGN: begin
-                // Assign the lowest free slot
-                if (!slot_status[0])
-                    slot_assigned = 4'b0000;
-                else if (!slot_status[1])
-                    slot_assigned = 4'b0001;
-                else if (!slot_status[2])
-                    slot_assigned = 4'b0010;
-                else if (!slot_status[3])
-                    slot_assigned = 4'b0011;
-
-                // Update slot status
-                slot_status[slot_assigned] = 1;
-                available_slots = available_slots - 1;
-                next_state = DOOR_FLASH;
-            end
-
-            EXIT_CHECK: begin
-                if (slot_status[exit_slot]) begin
-                    slot_status[exit_slot] = 0;
-                    available_slots = available_slots + 1;
+            // 0 Slots Occupied
+            4'b0000: begin
+                occupancy = 4'b0000;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b0001;
                 end
-                next_state = DOOR_FLASH;
             end
 
-            DOOR_FLASH: begin
-                door_open = (timer[22] == 1); // Flash at 1Hz (adjusted for FPGA)
-                if (timer > 24'd500_000) // Flash for a shorter period (~1 second)
-                    next_state = IDLE;
+            // 1 Slot Occupied
+            4'b0001: begin
+                occupancy = 4'b0001;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0010;
+                    next_state = 4'b0011;
+                end else if (exit_sensor && exit_location == 2'b00) begin
+                    next_state = 4'b0000;
+                end
             end
 
-            FULL_FLASH: begin
-                full = (timer[22] == 1); // Flash at 1Hz
-                if (timer > 24'd500_000) // Flash for a shorter period (~1 second)
-                    next_state = IDLE;
+            // 2 Slots Occupied
+            4'b0011: begin
+                occupancy = 4'b0011;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0100;
+                    next_state = 4'b0111;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b0010;
+                        2'b01: next_state = 4'b0001;
+                    endcase
+                end
             end
 
-            default: next_state = IDLE;
+            // 3 Slots Occupied
+            4'b0111: begin
+                occupancy = 4'b0111;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b1000;
+                    next_state = 4'b1111;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b0110;
+                        2'b01: next_state = 4'b0101;
+                        2'b10: next_state = 4'b0011;
+                    endcase
+                end
+            end
+
+            // 4 Slots Occupied
+            4'b1111: begin
+                full_light = 1'b1; // Parking Full
+                occupancy = 4'b1111;
+                if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b1110;
+                        2'b01: next_state = 4'b1101;
+                        2'b10: next_state = 4'b1011;
+                        2'b11: next_state = 4'b0111;
+                    endcase
+                end
+            end
+
+            // 5 Slots: Add transitions for partially freed states
+            4'b1110: begin
+                occupancy = 4'b1110;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b1111;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b01: next_state = 4'b1100;
+                        2'b10: next_state = 4'b1010;
+                        2'b11: next_state = 4'b0110;
+                    endcase
+                end
+            end
+            // 6
+            4'b1101: begin
+                occupancy = 4'b1101;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0010;
+                    next_state = 4'b1111;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b1100;
+                        2'b10: next_state = 4'b1001;
+                        2'b11: next_state = 4'b0101;
+                    endcase
+                end
+            end
+            // 7
+            4'b1011: begin
+                occupancy = 4'b1011;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0100;
+                    next_state = 4'b1111;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b1010;
+                        2'b01: next_state = 4'b1001;
+                        2'b11: next_state = 4'b0011;
+                    endcase
+                end
+            end
+            // 8
+            4'b0110: begin
+                occupancy = 4'b0110;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b1000;
+                    next_state = 4'b1110;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b01: next_state = 4'b0100;
+                        2'b10: next_state = 4'b0010;
+                    endcase
+                end
+            end
+
+            // 9
+            4'b1100: begin
+                occupancy = 4'b1100;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0010;
+                    next_state = 4'b1110;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b10: next_state = 4'b1000;
+                        2'b11: next_state = 4'b0100;
+                    endcase
+                end
+            end
+            // 10
+            4'b1001: begin
+                occupancy = 4'b1001;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0100;
+                    next_state = 4'b1101;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b1000;
+                        2'b11: next_state = 4'b0001;
+                    endcase
+                end
+            end
+            // 11
+            4'b0101: begin
+                occupancy = 4'b0101;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b1000;
+                    next_state = 4'b1101;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b00: next_state = 4'b0100;
+                        2'b10: next_state = 4'b0001;
+                    endcase
+                end
+            end
+
+            // 12
+            4'b0010: begin
+                occupancy = 4'b0010;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b0011;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b01: next_state = 4'b0000;
+                    endcase
+                end
+            end 
+            // 13
+            4'b0100: begin
+                occupancy = 4'b0100;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b0101;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b10: next_state = 4'b0000;
+                    endcase
+                end
+            end
+            // 14
+            4'b1000: begin
+                occupancy = 4'b1000;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b1001;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b11: next_state = 4'b0000;
+                    endcase
+                end
+            end
+            // 15
+            4'b1010: begin
+                occupancy = 4'b1010;
+                if (entry_sensor) begin
+                    door_open = 1'b1;
+                    best_slot = 4'b0001;
+                    next_state = 4'b1011;
+                end else if (exit_sensor) begin
+                    case (exit_location)
+                        2'b01: next_state = 4'b1000;
+                        2'b11: next_state = 4'b0010;
+                    endcase
+                end
+            end
+            default: begin
+                next_state = 4'b0000;
+            end
         endcase
     end
-
 endmodule

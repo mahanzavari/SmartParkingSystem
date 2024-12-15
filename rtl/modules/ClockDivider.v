@@ -16,7 +16,7 @@ module ClockDivider (
             clk_2Hz <= 0;
         end else begin
             // 1 Hz clock generation
-            if (counter_1Hz >= 40_000_000) begin
+            if (counter_1Hz >= 20_000_000) begin
                 clk_1Hz <= ~clk_1Hz;
                 counter_1Hz <= 0;
             end else begin
@@ -24,7 +24,7 @@ module ClockDivider (
             end
 
             // 2 Hz clock generation
-            if (counter_2Hz >= 20_000_000) begin
+            if (counter_2Hz >= 10_000_000) begin
                 clk_2Hz <= ~clk_2Hz;
                 counter_2Hz <= 0;
             end else begin

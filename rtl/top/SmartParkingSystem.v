@@ -11,78 +11,121 @@
 // -------------------------------------------------------------
 `timescale 1ns/1ps
 // integrigating all the signals 
-module SmartParkingSystem (
-    input clk,                      
-    input reset,
-    input entry_sensor,             // Entry button/sensor (debounced!)
-    input exit_sensor,              // Exit button/sensor (debounced!)
-    input echo,                     // Ultrasonic sensor echo signal
-    output trig,                    // Ultrasonic sensor trigger signal
-    input [3:0] exit_slot,          // Slot number for exiting car
-    output [6:0] seg_out,           // 7-segment display output
-    output [3:0] anode,             // Anode signals for 7-segment display
-    output door_open,               // Door open indicator
-    output full,                    // Parking full indicator
-    output [15:0] display_time      // Parking duration display (HH:MM)
+module TopIntegrator (
+    input wire clk,
+    input wire reset,
+    input wire entry_sensor,
+    input wire exit_sensor,
+    input wire echo,
+    input wire [3:0] exit_location, // Location of the car exiting
+    output wire [6:0] seg_display_left_1, // Leftmost 7-segment display
+    output wire trig,
+    output wire [6:0] seg_display_left_2, // Second leftmost 7-segment display
+    output wire [6:0] seg_display_right_1, // Rightmost 7-segment display
+    output wire [6:0] seg_display_right_2, // Second rightmost 7-segment display
+    output wire door_open_light,
+    output wire full_light
 );
 
-    // Internal signals
-    wire detected;                  // Ultrasonic sensor car detection
-    wire [3:0] assigned_slot;       // Slot assigned to the car
-    wire [3:0] available_slots;     // Number of available parking slots
-    wire [3:0] slot_status;         // Slot occupancy status
-    wire [3:0] stable_exit; // Debounced sensor signals
-    wire stable_entry;
-    wire clk_div;                   // Divided clock for timing 
-    // Instantiate Clock Divider
-    ClockDivider clock_divider (
-        .clk_in(clk),
-        .clk_out(clk_div)
-    );   
-    // Instantiate Debouncers
-    Debouncer entry_debouncer (
+    // Internal wires and registers
+    wire [3:0] current_state;
+    wire [3:0] best_slot;
+    wire door_open_signal;
+    wire full_signal;
+
+    wire [3:0] car_exit_signal;
+    wire [3:0] timer_display_left;
+    wire [3:0] timer_display_right;
+    wire [1:0] capacity_display;
+
+    wire [3:0] bcd_capacity_display;
+    wire [3:0] bcd_exit_location;
+
+    wire [6:0] seg_capacity_left_1;
+    wire [6:0] seg_capacity_left_2;
+
+    // Debouncers for input signals
+    wire entry_sensor_db;
+    wire exit_sensor_db;
+
+    Debouncer debouncer_entry (
         .clk(clk),
         .reset(reset),
-        .noisy_signal(entry_sensor),
-        .stable_signal(stable_entry)
-    );   
-    Debouncer exit_debouncer (
-        .clk(clk),
-        .reset(reset),
-        .noisy_signal(exit_sensor),
-        .stable_signal(stable_exit)
-    );   
-    // Instantiate FSM
-    ParkingFSM fsm (
-        .clk(clk),
-        .reset(reset),
-        .entry_sensor(stable_entry),
-        .exit_sensor(stable_exit),
-        .exit_slot(exit_slot),
-        .door_open(door_open),
-        .full(full),
-        .slot_assigned(assigned_slot),
-        .available_slots(available_slots)
+        .btn_input(entry_sensor),
+        .btn_output(entry_sensor_db)
     );
-    // Instantiate Slot Manager
+
+    Debouncer debouncer_exit (
+        .clk(clk),
+        .reset(reset),
+        .btn_input(exit_sensor),
+        .btn_output(exit_sensor_db)
+    );
+
+    Debouncer debouncer_location (
+        .clk(clk),
+        .reset(reset),
+        .btn_input(|exit_location), // Reduce location signal to a single bit for debouncing
+        .btn_output(car_exit_signal)
+    );
+
+    // FSM Module
+    FSM parking_fsm (
+        .clk(clk),
+        .reset(reset),
+        .entry_sensor(entry_sensor_db),
+        .exit_sensor(exit_sensor_db),
+        .exit_location(exit_location),
+        .door_open(door_open_signal),
+        .full_light(full_signal),
+        .current_state(current_state),
+        .capacity_display(capacity_display),
+        .best_slot(best_slot)
+    );
+
+    // Slot Manager (handles occupancy and slot assignments)
     SlotManager slot_manager (
         .clk(clk),
         .reset(reset),
-        .slot_update(assigned_slot),
-        .timer_status(stable_entry),
-        .slot_status(slot_status),
-        .available_slots(available_slots)
-    );   
-    // Instantiate Display Driver
-    DisplayDriver display_driver (
+        .entry_sensor(entry_sensor_db),
+        .exit_sensor(exit_sensor_db),
+        .exit_location(exit_location),
+        .current_state(current_state),
+        .best_slot(best_slot),
+        .slot_status(car_exit_signal)
+    );
+
+    // Timer Module (handles timing and display logic)
+    Timer timer_module (
         .clk(clk),
         .reset(reset),
-        .available_slots(available_slots),
-        .assigned_slot(assigned_slot),
-        .seg_out(seg_out),
-        .anode(anode)
-    );   
-    // Instantiate Ultrasonic Sensor
+        .car_active(car_exit_signal),
+        .car_exit(exit_location),
+        .bcd_display_left(timer_display_left),
+        .bcd_display_right(timer_display_right)
+    );
+
+    // BCD to 7-Segment Display Controllers
+    BCDto7Segment display_left_1 (
+        .bcd(timer_display_left),
+        .segments(seg_display_left_1)
+    );
+
+    BCDto7Segment display_left_2 (
+        .bcd(timer_display_right),
+        .segments(seg_display_left_2)
+    );
+
+    BCDto7Segment display_right_1 (
+        .bcd(capacity_display),
+        .segments(seg_display_right_1)
+    );
+
+    BCDto7Segment display_right_2 (
+        .bcd(exit_location[3:0]),
+        .segments(seg_display_right_2)
+    );
+
     UltrasonicSensor ultrasonic_sensor (
         .clk(clk),
         .reset(reset),
@@ -90,13 +133,10 @@ module SmartParkingSystem (
         .trig(trig),
         .detected(detected)
     );
-    // Instantiate Parking Timer
-    ParkingTimer parking_timer (
-        .clk(clk_div),               // Use divided clock for 1-second intervals
-        .reset(reset),
-        .car_entry(exit_slot),
-        .car_exit(stable_exit),   // Start or stop based on exit signal
-        .display_time(display_time)
-    );
+    // Output signals
+    assign door_open_light = door_open_signal;
+    assign full_light = full_signal;
+
 endmodule
+
 

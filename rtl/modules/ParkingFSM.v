@@ -35,6 +35,13 @@ module ParkingFSM (
         full_light = 1'b0;
         best_slot = 4'b00;
         is_valid_car_location = 1'b1;
+        // maybe use a case or if outside of the case (current_state) that encompasses it and then check 
+        // if exit and entry is 00 then we just set the 
+        //     door_open = 1'b0;
+        //     full_light = 1'b0; 
+        //     occupancy = 4'b0000;
+        //     best_slot = 2'b00;
+        // else we update the states?
 
         case (current_state)
             // 0 Slots Occupied
@@ -47,6 +54,12 @@ module ParkingFSM (
                     door_open = 1'b1;
                     next_state = 4'b0001;
                 end
+                // if (!entry_sensor && !exit_sensor) begin
+                //     door_open = 1'b0;
+                //     full_light = 1'b0; 
+                //     occupancy = 4'b0000;
+                //     best_slot = 2'b00;
+                // end
             end
 
             // 1 Slot Occupied
@@ -113,6 +126,12 @@ module ParkingFSM (
                 full_light = 1'b1; // Parking Full
                 best_slot = 2'b00; // don't care
                 occupancy = 4'b1111;
+                // if (!exit_sensor && !entry_sensor) begin
+                //     full_light = 1'b0;
+                //     occupancy = 4'b1111;
+                //     door_open = 1'b0;
+                //     best_slot = 2'b00; // or 2'bxx;
+                // end
                 if (exit_sensor) begin
                 is_valid_car_location = 1;
                     case (exit_location)
@@ -156,6 +175,7 @@ module ParkingFSM (
                 best_slot = 2'b01;
                 if (entry_sensor) begin
                     door_open = 1'b1;
+                    // full_light = 1'b1; //maybe it is better to turn  the full light on just prior to transitioning 1111?  
                     next_state = 4'b1111;
                 end else if (exit_sensor) begin
                     is_valid_car_location = 1;

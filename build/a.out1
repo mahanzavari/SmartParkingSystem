@@ -1,26 +1,16 @@
-**** module/scope: ParkingTimer
-     Flip-Flops   : 94
-     Logic Gates  : 420
-     ADDER[2]: 1 units
-     ADDER[16]: 4 units
-     ADDER[24]: 1 units
-     EQUALITY[24]: 1 units
-     MUX[2]: 88 slices
-     LPM[12]: 1 unaccounted
-     LPM[13]: 1 unaccounted
-     LPM[30]: 2 unaccounted
-     LOG[13]: 2 unaccounted
+**** module/scope: ClockDivider
+     Flip-Flops   : 54
+     Logic Gates  : 338
+     ADDER[26]: 2 units
+     MAGNITUDE[32]: 2 units
+     MUX[2]: 52 slices
+     LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted
 **** TOTALS
-     Flip-Flops   : 94
-     Logic Gates  : 420
-     ADDER[2]: 1 units
-     ADDER[16]: 4 units
-     ADDER[24]: 1 units
-     EQUALITY[24]: 1 units
-     MUX[2]: 88 slices
-     LPM[12]: 1 unaccounted
-     LPM[13]: 1 unaccounted
-     LPM[30]: 2 unaccounted
-     LOG[13]: 2 unaccounted
+     Flip-Flops   : 54
+     Logic Gates  : 338
+     ADDER[26]: 2 units
+     MAGNITUDE[32]: 2 units
+     MUX[2]: 52 slices
+     LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted

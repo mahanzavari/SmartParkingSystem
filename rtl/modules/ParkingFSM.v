@@ -1,377 +1,104 @@
-// FSM for Parking System (Mealy Machine with 16 states)
 module ParkingFSM (
     input wire clk,
     input wire reset,
-    input wire entry_sensor,         // Signal when a car is entering
-    input wire exit_sensor,          // Signal when a car is exiting
-    input wire [1:0] exit_location,  // Slot being freed up during exit
-    output reg door_open,            // Door control for entry
-    output reg full_light,           // Indicates parking is full
-    output reg [3:0] occupancy,      // Indicates the occupancy of the parking
-    output reg [3:0] current_state,  // Current parking occupancy state
-    output reg [1:0] best_slot       // Suggested slot for entry
+    input wire entry_sensor,
+    input wire exit_sensor,
+    input wire [1:0] exit_location,
+    output reg door_open,
+    output reg full_light,
+    output reg [3:0] current_state,
+    output reg [2:0] capacity,
+    output reg [1:0] best_slot
 );
 
     reg [3:0] next_state;
     reg is_valid_car_location;
 
+    initial begin
+        // Default values for outputs and next state
+        current_state = 4'b0000;
+        next_state = current_state;
+        door_open = 1'b0;
+        full_light = 1'b0;
+        best_slot = 2'b00;
+        capacity = 2'b00;
+        is_valid_car_location = 1'b1;
+    end
+
     // State Transition Logic (Sequential Logic)
     always @(posedge clk or posedge reset) begin
-        if (reset) 
-        begin
-            current_state <= 4'b0000; // Reset to all slots empty
-            occupancy <= 4'b0000;
-        end 
-        else begin
+        if (reset) begin
+            current_state <= 4'b0000;
+            door_open <= 1'b0;
+            full_light <= 1'b0;
+            best_slot = 2'b00;
+            capacity <= 2'b00;
+        end else begin
             current_state <= next_state;
         end
     end
 
-    // Combinational Logic: Next State and Output Logic (Mealy Machine)
+    // Combinational Logic for Next State and Outputs
     always @(*) begin
-        // Default Outputs
         next_state = current_state;
-        door_open = 1'b0;
         full_light = 1'b0;
-        best_slot = 4'b00;
-        is_valid_car_location = 1'b1;
-        // maybe use a case or if outside of the case (current_state) that encompasses it and then check 
-        // if exit and entry is 00 then we just set the 
-        //     door_open = 1'b0;
-        //     full_light = 1'b0; 
-        //     occupancy = 4'b0000;
-        //     best_slot = 2'b00;
-        // else we update the states?
-
+        best_slot = 2'b00;
+        capacity = 2'b00;
+        door_open = 1'b0;
+        
+        // Determine `best_slot` based on the first available slot (rightmost empty)
         case (current_state)
-            // 0 Slots Occupied
-            4'b0000: begin
-                door_open = 1'b0;
-                full_light = 1'b0; 
-                occupancy = 4'b0000;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0001;
-                end
-                // if (!entry_sensor && !exit_sensor) begin
-                //     door_open = 1'b0;
-                //     full_light = 1'b0; 
-                //     occupancy = 4'b0000;
-                //     best_slot = 2'b00;
-                // end
-            end
-
-            // 1 Slot Occupied
-            4'b0001: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0001;
-                best_slot = 2'b01;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0011;
-                end else if (exit_sensor && exit_location == 2'b00) begin
-                    next_state = 4'b0000;
-                    door_open = 1'b1;
-                end
-            end
-
-            // 2 Slots Occupied
-            4'b0011: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0011;
-                best_slot = 2'b10;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b0010;
-                        2'b01: next_state = 4'b0001;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-
-            // 3 Slots Occupied
-            4'b0111: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0111;
-                best_slot = 2'b11;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b0110;
-                        2'b01: next_state = 4'b0101;
-                        2'b10: next_state = 4'b0011;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-
-            // 4 Slots Occupied
-            4'b1111: begin
-                door_open = 1'b0;
-                full_light = 1'b1; // Parking Full
-                best_slot = 2'b00; // don't care
-                occupancy = 4'b1111;
-                // if (!exit_sensor && !entry_sensor) begin
-                //     full_light = 1'b0;
-                //     occupancy = 4'b1111;
-                //     door_open = 1'b0;
-                //     best_slot = 2'b00; // or 2'bxx;
-                // end
-                if (exit_sensor) begin
-                is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b1110;
-                        2'b01: next_state = 4'b1101;
-                        2'b10: next_state = 4'b1011;
-                        2'b11: next_state = 4'b0111;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-
-            // 5 Slots: Add transitions for partially freed states
-            4'b1110: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1110;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b01: next_state = 4'b1100;
-                        2'b10: next_state = 4'b1010;
-                        2'b11: next_state = 4'b0110;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 6
-            4'b1101: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1101;
-                best_slot = 2'b01;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    // full_light = 1'b1; //maybe it is better to turn  the full light on just prior to transitioning 1111?  
-                    next_state = 4'b1111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b1100;
-                        2'b10: next_state = 4'b1001;
-                        2'b11: next_state = 4'b0101;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 7
-            4'b1011: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1011;
-                best_slot = 2'b10;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b1010;
-                        2'b01: next_state = 4'b1001;
-                        2'b11: next_state = 4'b0011;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 8
-            4'b0110: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0110;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1110;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b01: next_state = 4'b0100;
-                        2'b10: next_state = 4'b0010;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-
-            // 9
-            4'b1100: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1100;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1110;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b10: next_state = 4'b1000;
-                        2'b11: next_state = 4'b0100;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 10
-            4'b1001: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1001;
-                best_slot = 2'b01;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1101;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b1000;
-                        2'b11: next_state = 4'b0001;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 11
-            4'b0101: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0101;
-                best_slot = 2'b01;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0111;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b00: next_state = 4'b0100;
-                        2'b10: next_state = 4'b0001;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-
-            // 12
-            4'b0010: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0010;
-                best_slot = 2'b00; 
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0011;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b01: next_state = 4'b0000;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end 
-            // 13
-            4'b0100: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b0100;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b0101;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b10: next_state = 4'b0000;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 14
-            4'b1000: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1000;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1001;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b11: next_state = 4'b0000;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
-            // 15
-            4'b1010: begin
-                door_open = 1'b0;
-                full_light = 1'b0;
-                occupancy = 4'b1010;
-                best_slot = 2'b00;
-                if (entry_sensor) begin
-                    door_open = 1'b1;
-                    next_state = 4'b1011;
-                end else if (exit_sensor) begin
-                    is_valid_car_location = 1;
-                    case (exit_location)
-                        2'b01: next_state = 4'b1000;
-                        2'b11: next_state = 4'b0010;
-                        default: is_valid_car_location = 1'b0;
-                    endcase
-                    if (is_valid_car_location)
-                        door_open = 1'b1;
-                end
-            end
+            4'b0000: best_slot = 2'b00;
+            4'b0001: best_slot = 2'b01;
+            4'b0011: best_slot = 2'b10;
+            4'b0111: best_slot = 2'b11;
             default: begin
-                next_state = 4'b0000;
+                if (~current_state[0]) best_slot = 2'b00;
+                else if (~current_state[1]) best_slot = 2'b01;
+                else if (~current_state[2]) best_slot = 2'b10;
+                else if (~current_state[3]) best_slot = 2'b11;
+                else best_slot = 2'b00; // Parking full (no slot available) - don't care
             end
         endcase
+
+        // Handle exit_sensor (free the specified slot)
+        if (exit_sensor) begin
+            case (exit_location)
+                2'b00: is_valid_car_location = current_state[0];
+                2'b01: is_valid_car_location = current_state[1];
+                2'b10: is_valid_car_location = current_state[2];
+                2'b11: is_valid_car_location = current_state[3];
+                default: is_valid_car_location = 1'b0;
+            endcase
+            if (is_valid_car_location) begin
+                case (exit_location)
+                    2'b00: next_state = current_state & ~4'b0001;
+                    2'b01: next_state = current_state & ~4'b0010;
+                    2'b10: next_state = current_state & ~4'b0100;
+                    2'b11: next_state = current_state & ~4'b1000;
+                endcase
+                door_open = 1'b1;
+            end
+        end
+
+        // Handle entry_sensor (find nearest slot and update state)
+        else if (entry_sensor && current_state != 4'b1111) begin
+            door_open = 1'b1;
+            case (best_slot)
+                2'b00: next_state = current_state | 4'b0001;
+                2'b01: next_state = current_state | 4'b0010;
+                2'b10: next_state = current_state | 4'b0100;
+                2'b11: next_state = current_state | 4'b1000;
+                default: next_state = current_state; // Should not occur
+            endcase
+        end
+
+        // Update capacity based on current state
+        capacity = ~current_state[0] + ~current_state[1] + ~current_state[2] + ~current_state[3];
+
+        // Set `full_light` if parking is full
+        if (current_state == 4'b1111) begin
+            full_light = 1'b1;
+        end
     end
 endmodule

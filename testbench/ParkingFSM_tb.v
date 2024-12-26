@@ -1,5 +1,5 @@
 `timescale 1ns/1ps
-
+// `include "ParkingFSM.v"
 module ParkingFSM_tb;
 
     reg clk;
@@ -9,7 +9,7 @@ module ParkingFSM_tb;
     reg [1:0] exit_location;
     wire door_open;
     wire full_light;
-    wire [3:0] occupancy;
+    wire [2:0] occupancy;
     wire [3:0] current_state;
     wire [1:0] best_slot;
 
@@ -26,8 +26,8 @@ module ParkingFSM_tb;
         .exit_location(exit_location),
         .door_open(door_open),
         .full_light(full_light),
-        .occupancy(occupancy),
         .current_state(current_state),
+        .capacity(occupancy),
         .best_slot(best_slot)
     );
 
@@ -39,10 +39,14 @@ module ParkingFSM_tb;
 
     initial begin
         // Open input and output files
-        infile = $fopen("input.txt", "r");
-        outfile = $fopen("output.txt", "w");
-        if (infile == 0 || outfile == 0) begin
-            $display("Error: Unable to open input or output file.");
+        infile = $fopen("C:/Users/ASUS/Desktop/2ndtest/input.txt", "r");
+        outfile = $fopen("C:/Users/ASUS/Desktop/2ndtest/output.txt", "w");
+        if (infile == 0) begin
+            $display("Error: Unable to open input file (input.txt). Ensure the file exists.");
+            $finish;
+        end
+        if (outfile == 0) begin
+            $display("Error: Unable to open output file (output.txt). Check write permissions.");
             $finish;
         end
 

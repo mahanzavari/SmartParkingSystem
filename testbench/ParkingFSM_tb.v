@@ -39,8 +39,8 @@ module ParkingFSM_tb;
 
     initial begin
         // Open input and output files
-        infile = $fopen("C:/Users/ASUS/Desktop/2ndtest/input.txt", "r");
-        outfile = $fopen("C:/Users/ASUS/Desktop/2ndtest/output.txt", "w");
+        infile = $fopen("/input.txt", "r");
+        outfile = $fopen("/output.txt", "w");
         if (infile == 0) begin
             $display("Error: Unable to open input file (input.txt). Ensure the file exists.");
             $finish;

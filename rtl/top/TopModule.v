@@ -3,22 +3,41 @@
 module TopModule(
     input wire clk,
     input wire reset,
-    input wire entry_sensor,
-    input wire exit_sensor,
-    input wire [1:0] exit_location, // Location of the car exiting
+    input wire entry_echo,          // Echo signal for entry sensor
+    input wire exit_echo,           // Echo signal for exit sensor
+    output wire entry_trig,         // Trigger signal for entry sensor
+    output wire exit_trig,          // Trigger signal for exit sensor
     output reg door_status_light,   // Indicates the door status (blinking when open)
-    output wire lot_full_light,     // Indicates when the parking lot is full
-    output wire [3:0] parking_state, // parking current state
-    output wire [6:0] seg_out,   // Seven-segment output
-    output wire [3:0] anode      // Anode signals for 7-segment display
-
+    output reg lot_full_light,      // Indicates when the parking lot is full (blinking logic)
+    output wire [3:0] parking_state, // Parking current state
+    output wire [6:0] seg_out,      // Seven-segment output
+    output wire [3:0] anode         // Anode signals for 7-segment display
 );
+
+    // <------<< Ultrasonic for entry and exit sensor
+    wire entry_detected;
+    wire exit_detected;
+
+    // Ultrasonic Sensor Modules
+    UltrasonicSensor entry_ultrasonic (
+        .clk(clk),
+        .reset(reset),
+        .echo(entry_echo),
+        .trig(entry_trig),
+        .detected(entry_detected)  // Car detected at entry
+    );
+
+    UltrasonicSensor exit_ultrasonic (
+        .clk(clk),
+        .reset(reset),
+        .echo(exit_echo),
+        .trig(exit_trig),
+        .detected(exit_detected)   // Car detected at exit
+    );
 
     // <------<< Internal wires >>------>
 
     // Debounced wires
-    wire debounced_entry_signal;
-    wire debounced_exit_signal;
     wire [1:0] debounced_exit_location;
 
     // Door and full signals
@@ -43,23 +62,7 @@ module TopModule(
         .clk_1Hz(clk_1Hz),
         .clk_2Hz(clk_2Hz)
     );
-
-    // Debouncer for entry signal
-    Debouncer entry_debouncer (
-        .clk(clk),
-        .reset(reset),
-        .noisy_signal(entry_sensor),
-        .stable_signal(debounced_entry_signal)
-    );
-
-    // Debouncer for exit signal
-    Debouncer exit_debouncer (
-        .clk(clk),
-        .reset(reset),
-        .noisy_signal(exit_sensor),
-        .stable_signal(debounced_exit_signal)
-    );
-
+    
     // Debouncing each bit of the `exit_location` signal
     wire debounced_exit_location_bit0;
     wire debounced_exit_location_bit1;
@@ -86,8 +89,8 @@ module TopModule(
     ParkingFSM parking_fsm (
         .clk(clk),
         .reset(reset),
-        .entry_sensor(debounced_entry_signal),
-        .exit_sensor(debounced_exit_signal),
+        .entry_sensor(entry_detected),
+        .exit_sensor(exit_detected),
         .exit_location(debounced_exit_location),
         .door_open(door_open_signal),
         .full_light(lot_full_signal),

@@ -11,19 +11,20 @@ module Debouncer (
     output reg stable_signal
 );
     parameter N = 8; // Number of samples in the shift register
-    reg [N-1:0] shift_reg; // Shift register that holds the last n consecutive states  
+    reg [N-1:0] shift_reg; // Shift register to hold the last N samples
 
     always @(posedge clk or posedge reset) 
     begin
         if (reset) begin
-             shift_reg <= 0;
-             stable_signal <= 0;
+            shift_reg <= {N{1'b0}}; // Clear the shift register
+            stable_signal <= 1'b0;  // Default stable state
         end else begin
-             shift_reg <= {shift_reg[N-2:0], noisy_signal};
-             if (shift_reg == {N{1'b1}}) // Is it all consecutive 1s?
-                  stable_signal <= 1;
-             else if (shift_reg == {N{1'b0}}) // or is it 0s
-                  stable_signal <= 0;
+            shift_reg <= {shift_reg[N-2:0], noisy_signal}; // Shift in the new sample
+            // Check if all samples are 1 or 0 to stabilize the signal
+            if (shift_reg == {N{1'b1}})
+                stable_signal <= 1'b1;
+            else if (shift_reg == {N{1'b0}})
+                stable_signal <= 1'b0;
         end
     end
 endmodule

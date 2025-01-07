@@ -1,30 +1,47 @@
-module Debouncer (
-    input clk,            // System clock
-    input reset,          // Reset signal
-    input noisy_signal,   // Noisy input signal
-    output reg stable_signal // Debounced (stable) output signal
-);
+`timescale 1ns / 1ps
+module button_debounce
+  #(
+    parameter clk_freq = 40_000_000,
+    debouncing_fre = 2
+    ) // cool idea that I got from a friend
+  (
+   input clk,     // clock
+   input reset, 
+   input noisy_signal,  // input noisy signal
+   output reg stable_single_clock_signal // debounced 1-cycle signal
+   );
+  reg [25:0] count;
+  reg noisy_sync, prev_noisy_sync;
+  reg [1:0] curr_state;
+  localparam COUNT_VALUE = clk_freq / debouncing_fre;
 
-    reg ff1, ff2, ff3, ff4; // Three flip-flops to hold the shifted values
-
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            // Initialize all flip-flops and stable signal to 0 on reset
-            ff1 <= 0;
-            ff2 <= 0;
-            ff3 <= 0;
-				ff4 <= 0;
-            stable_signal <= 0;
-        end else begin
-            // Shift the values through the flip-flops
-            ff1 <= noisy_signal;
-            ff2 <= ff1;
-            ff3 <= ff2;
-				ff4 <= ff3;
-            
-            // Set stable_signal based on the AND of the first and second flip-flops
-            // and the NOT of the third flip-flop
-            stable_signal <= ff1 & ff2 & ff3 & ~ff4;
-        end
-    end
-endmodule
+  always @(posedge clk or negedge reset) begin
+    if (!reset) begin
+      curr_state <= 0;
+      stable_single_clock_signal <= 0;
+      count <= 0;
+      noisy_sync <= 0;
+      prev_noisy_sync <= 0;
+    end else begin
+      noisy_sync <= noisy_signal;
+      prev_noisy_sync <= noisy_sync;
+      stable_single_clock_signal <= 0;
+      case (curr_state)
+        0: begin
+          if (noisy_sync && !prev_noisy_sync) begin // Detect rising edge
+            curr_state <= 1;
+            count <= 0;
+          end
+        end
+        1: begin
+          if (count < COUNT_VALUE - 1) begin
+            count <= count + 1;
+          end else begin
+            stable_single_clock_signal <= 1; // Generate a single jump
+            curr_state <= 0;
+          end
+        end
+      endcase
+    end
+  end
+ endmodule

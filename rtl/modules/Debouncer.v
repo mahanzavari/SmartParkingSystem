@@ -1,47 +1,27 @@
-`timescale 1ns / 1ps
-module button_debounce
-  #(
-    parameter clk_freq = 40_000_000,
-    debouncing_fre = 2
-    ) // cool idea that I got from a friend
-  (
-   input clk,     // clock
-   input reset, 
-   input noisy_signal,  // input noisy signal
-   output reg stable_single_clock_signal // debounced 1-cycle signal
-   );
-  reg [25:0] count;
-  reg noisy_sync, prev_noisy_sync;
-  reg [1:0] curr_state;
-  localparam COUNT_VALUE = clk_freq / debouncing_fre;
+module Debouncer (
+    input wire clk,           // System clock
+    input wire reset,         // Reset signal (active high)
+    input wire button,        // Raw button input
+    output wire debounced_pulse // One-clock pulse output
+);
 
-  always @(posedge clk or negedge reset) begin
-    if (!reset) begin
-      curr_state <= 0;
-      stable_single_clock_signal <= 0;
-      count <= 0;
-      noisy_sync <= 0;
-      prev_noisy_sync <= 0;
-    end else begin
-      noisy_sync <= noisy_signal;
-      prev_noisy_sync <= noisy_sync;
-      stable_single_clock_signal <= 0;
-      case (curr_state)
-        0: begin
-          if (noisy_sync && !prev_noisy_sync) begin // Detect rising edge
-            curr_state <= 1;
-            count <= 0;
-          end
-        end
-        1: begin
-          if (count < COUNT_VALUE - 1) begin
-            count <= count + 1;
-          end else begin
-            stable_single_clock_signal <= 1; // Generate a single jump
-            curr_state <= 0;
-          end
-        end
-      endcase
-    end
-  end
- endmodule
+    // Flip-flops to track button state
+    reg button_ff1, button_ff2, button_ff3;
+
+    // Sequential logic for flip-flops
+    always @(posedge clk or posedge reset) begin
+        if (reset) begin
+            button_ff1 <= 0;
+            button_ff2 <= 0;
+            button_ff3 <= 0;
+        end else begin
+            button_ff1 <= button;           // Synchronize raw input to clk
+            button_ff2 <= button_ff1;       // Delay by one clock cycle
+            button_ff3 <= button_ff2;       // Delay by another clock cycle
+        end
+    end
+
+    // Generate one-clock pulse when button is pressed
+    assign debounced_pulse = button_ff1 & button_ff2 & ~button_ff3;
+
+endmodule

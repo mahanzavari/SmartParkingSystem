@@ -7,7 +7,7 @@ module TopModule(
     input wire exit_sensor,
     input wire [1:0] exit_location, // Location of the car exiting
     output reg door_status_light,   // Indicates the door status (blinking when open)
-//    output reg lot_full_light,      // Indicates when the parking lot is full
+    output reg lot_full_light,      // Indicates when the parking lot is full
     output wire [3:0] parking_state,// parking current state
     output wire [7:0] seg_out,      // Seven-segment output
     output wire [4:0] anode         // Anode signals for 7-segment display
@@ -30,6 +30,7 @@ module TopModule(
 	 
 	 initial begin
 		door_status_light = 1'b0;
+		lot_full_light = 1'b0;
 	end
  // <------<< Helper modules >>------>
 
@@ -83,12 +84,29 @@ module TopModule(
             door_open_timer <= 5'b00000;
             door_active <= 1'b1;
             door_status_light <= 1'b1;
-        end else if (door_active && door_open_timer < 5'b10100) begin
+        end else if (door_active && door_open_timer < 5'b10011) begin
             door_status_light <= ~door_status_light;
 				 door_open_timer <= door_open_timer + 5'b00001;
-        end else if (door_open_timer >= 5'b00100) begin
+        end else if (door_open_timer >= 5'b10011) begin
             door_active <= 1'b0;
             door_status_light <= 1'b0;
+        end
+    end
+	 
+	 reg [2:0] full_blink_counter = 3'b000;
+    reg full_blink_active = 1'b0;
+	 
+	 always @(posedge clk_2Hz or posedge lot_full_signal) begin
+        if (lot_full_signal) begin
+            full_blink_counter <= 3'b000;
+            full_blink_active <= 1'b1;
+            lot_full_light <= 1'b1;
+        end else if (full_blink_active && full_blink_counter < 3'b101) begin
+            lot_full_light <= ~lot_full_light;
+				 full_blink_counter <= full_blink_counter + 3'b001;
+        end else if (full_blink_counter >= 3'b101) begin
+            full_blink_active <= 1'b0;
+            lot_full_light <= 1'b0;
         end
     end
 	 

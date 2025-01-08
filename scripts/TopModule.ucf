@@ -1,0 +1,29 @@
+
+
+NET "anode[4]" LOC = P16;
+NET "anode[3]" LOC = P18;
+NET "anode[2]" LOC = P19;
+NET "anode[1]" LOC = P20;
+NET "anode[0]" LOC = P15;
+NET "door_status_light" LOC = p61;
+NET "lot_full_light" LOC = p71;
+NET "exit_location[1]" LOC = P171;
+NET "exit_location[0]" LOC = P169;
+NET "parking_state[2]" LOC = P43;
+NET "parking_state[1]" LOC = P44;
+NET "parking_state[3]" LOC = P42;
+NET "parking_state[0]" LOC = P45;
+NET "seg_out[7]" LOC = P3;
+NET "seg_out[6]" LOC = P9;
+NET "seg_out[5]" LOC = P12;
+NET "seg_out[3]" LOC = P5;
+NET "seg_out[4]" LOC = P4;
+NET "seg_out[2]" LOC = P11;
+NET "seg_out[1]" LOC = P7;
+NET "seg_out[0]" LOC = P10;
+NET "clk" LOC = P184;
+NET "entry_sensor" LOC = P185;
+NET "exit_sensor" LOC = P187;
+
+
+NET "reset" LOC = P162;

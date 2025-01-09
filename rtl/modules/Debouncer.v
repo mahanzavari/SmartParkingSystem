@@ -1,30 +1,45 @@
-module Debouncer (
-    input clk,            // System clock
-    input reset,          // Reset signal
-    input noisy_signal,   // Noisy input signal
-    output reg stable_signal // Debounced (stable) output signal
-);
+`timescale 1ns / 1ps
 
-    reg ff1, ff2, ff3, ff4; // Three flip-flops to hold the shifted values
+module Debouncer(
+	input clk,
+	input reset_n,
+	input button,
+	output reg debounce
+	);
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            // Initialize all flip-flops and stable signal to 0 on reset
-            ff1 <= 0;
-            ff2 <= 0;
-            ff3 <= 0;
-				ff4 <= 0;
-            stable_signal <= 0;
-        end else begin
-            // Shift the values through the flip-flops
-            ff1 <= noisy_signal;
-            ff2 <= ff1;
-            ff3 <= ff2;
-				ff4 <= ff3;
-            
-            // Set stable_signal based on the AND of the first and second flip-flops
-            // and the NOT of the third flip-flop
-            stable_signal <= ff1 & ff2 & ff3 & ~ff4;
-        end
-    end
+
+	localparam COUNT_VALUE = 40_000_000 / 5;
+	reg [1:0] state;
+	reg [25:0] count;
+	reg button_sync, button_sync_prev;
+
+	always @(posedge clk or negedge reset_n) begin
+		if (!reset_n) begin
+			state <= 0;
+			debounce <= 0;
+			count <= 0;
+			button_sync <= 0;
+			button_sync_prev <= 0;
+		end else begin
+			button_sync <= button;
+			button_sync_prev <= button_sync;
+			debounce <= 0;
+	case (state)
+		0: begin
+			if (button_sync && !button_sync_prev) begin // Detect rising edge
+				state <= 1;
+				count <= 0;
+			end
+		end
+		1: begin
+			if (count < COUNT_VALUE - 1) begin
+				count <= count + 1;
+			end else begin
+				debounce <= 1; // Generate a single pulse
+				state <= 0;
+			end
+		end
+		endcase
+	end
+	end
 endmodule

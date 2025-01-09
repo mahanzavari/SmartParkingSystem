@@ -1,7 +1,7 @@
 `timescale 1ns / 1ps
 
 module ParkingTimer (
-    input clk,                     
+    input clk_1Hz,                     
     input reset,                   
     input [3:0] car_entry,         // Signals for car entry in each slot
     input [3:0] car_exit,          // Signals for car exit in each slot
@@ -15,7 +15,7 @@ module ParkingTimer (
     reg display_active;            // Flag to indicate if display is active
 
 
-    always @(posedge clk or posedge reset) begin
+    always @(posedge clk_1Hz or posedge reset) begin
         if (reset) begin
             slot_timer[0] <= 16'd0;
             slot_timer[1] <= 16'd0;

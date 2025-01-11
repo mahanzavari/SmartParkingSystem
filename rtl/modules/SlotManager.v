@@ -1,6 +1,7 @@
 `timescale 1ns / 1ps
 
-module Multiplexer (
+// module Multiplexer (
+module SlotManager (
     input wire clk,                  // 40MHz Spartan FPGA clock
     input wire reset,
     input wire [15:0] display_time,  // Output from ParkingTimer

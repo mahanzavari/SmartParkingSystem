@@ -29,136 +29,99 @@ Attention :
 and the plane requests as smooth as possible, otherwise ,it will affect the 
 results of measuring.
 */
-`timescale 1ns / 1ps
-
-module UltrasonicSensor#(parameter ten_us = 10'd400) // 10 µs at 40 MHz
-( 
-  input clk, //40 MHz
-  input rst,
-  input measure,
-  output reg [1:0] state,
-  output ready,
-  //HC-SR04 signals
-  input echo,  //JA1(Pins)
-  output trig, //JA2(Pins)
-  output reg [21:0] distanceRAW,
-  // Outputs for ParkingFSM
-  output reg car_entry, // Signal to indicate a car is entering
-  output reg car_exit   // Signal to indicate a car is exiting
+module UltraSonicSensor#(
+    parameter ten_us = 10'd400,  // 10 µs at 40 MHz (400 clock cycles)
+    parameter threshold_RAW = 22'd69600  // Threshold for 30 cm at 40 MHz
+)(
+    input clk, //40 MHz
+    input rst,
+    input measure,
+    output reg [1:0] state,
+    output ready,
+    //HC-SR04 signals
+    input echo, //JA1
+    output trig, //JA2
+    output reg [21:0] distanceRAW,
+    output reg exit_car  // Added exit_car output
 );
-  localparam IDLE = 2'b00,
-          TRIGGER = 2'b01,
-             WAIT = 2'b11,
-        COUNTECHO = 2'b10;
-  wire inIDLE, inTRIGGER, inWAIT, inCOUNTECHO;
-  reg [9:0] counter;
-  wire trigcountDONE, counterDONE;
 
-  // Thresholds for car entry/exit detection (in distanceRAW units)
-  localparam ENTRY_THRESHOLD = 22'd11664; // 50 cm
-  localparam EXIT_THRESHOLD = 22'd23328;  // 100 cm
+    localparam IDLE = 2'b00,
+              TRIGGER = 2'b01,
+              WAIT = 2'b11,
+              COUNTECHO = 2'b10;
+    wire inIDLE, inTRIGGER, inWAIT, inCOUNTECHO;
+    reg [9:0] counter;
+    wire trigcountDONE;
 
-  //Ready
-  assign ready = inIDLE;
-  
-  //Decode states
-  assign inIDLE = (state == IDLE);
-  assign inTRIGGER = (state == TRIGGER);
-  assign inWAIT = (state == WAIT);
-  assign inCOUNTECHO = (state == COUNTECHO);
+    //Ready
+    assign ready = inIDLE;
+    
+    //Decode states
+    assign inIDLE = (state == IDLE);
+    assign inTRIGGER = (state == TRIGGER);
+    assign inWAIT = (state == WAIT);
+    assign inCOUNTECHO = (state == COUNTECHO);
 
-  //State transactions
-  always@(posedge clk or posedge rst)
-    begin
-      if(rst)
+    //State transactions
+    always @(posedge clk or posedge rst)
         begin
-          state <= IDLE;
-          car_entry <= 1'b0;
-          car_exit <= 1'b0;
-        end
-      else
-        begin
-          case(state)
-            IDLE:
-              begin
-                state <= (measure & ready) ? TRIGGER : state;
-              end
-            TRIGGER:
-              begin
-                state <= (trigcountDONE) ? WAIT : state;
-              end
-            WAIT:
-              begin
-                state <= (echo) ? COUNTECHO : state;
-              end
-            COUNTECHO:
-              begin
-                state <= (echo) ? state : IDLE;
-              end
-          endcase
-          
-        end
-    end
-  
-  //Trigger
-  assign trig = inTRIGGER;
-  
-  //Counter
-  always@(posedge clk)
-    begin
-      if(inIDLE)
-        begin
-          counter <= 10'd0;
-        end
-      else
-        begin
-          counter <= counter + {9'd0, (|counter | inTRIGGER)};
-        end
-    end
-  assign trigcountDONE = (counter == ten_us);
-
-  //Get distance
-  always@(posedge clk)
-    begin
-      if(inWAIT)
-        distanceRAW <= 22'd0;
-      else
-        distanceRAW <= distanceRAW + {21'd0, inCOUNTECHO};
-    end
-
-  // Detect car entry/exit based on distance
-  always@(posedge clk or posedge rst)
-    begin
-      if(rst)
-        begin
-          car_entry <= 1'b0;
-          car_exit <= 1'b0;
-        end
-      else
-        begin
-          if (inIDLE && distanceRAW > 0)
-            begin
-              if (distanceRAW < ENTRY_THRESHOLD)
+            if (rst)
                 begin
-                  car_entry <= 1'b1; // Car is entering
-                  car_exit <= 1'b0;
+                    state <= IDLE;
+                    exit_car <= 0;  // Initialize exit_car on reset
                 end
-              else if (distanceRAW > EXIT_THRESHOLD)
+            else
                 begin
-                  car_exit <= 1'b1; // Car is exiting
-                  car_entry <= 1'b0;
+                    case (state)
+                        IDLE:
+                            begin
+                                state <= (measure & ready) ? TRIGGER : state;
+                            end
+                        TRIGGER:
+                            begin
+                                state <= (trigcountDONE) ? WAIT : state;
+                            end
+                        WAIT:
+                            begin
+                                state <= (echo) ? COUNTECHO : state;
+                            end
+                        COUNTECHO:
+                            begin
+                                state <= (~echo) ? IDLE : state;
+                            end
+                    endcase
+                    // Object detection logic
+                    if (inIDLE && ready)
+                        begin
+                            if (distanceRAW < threshold_RAW)
+                                exit_car <= 1;  // Object detected (distance < 30 cm)
+                            else
+                                exit_car <= 0;  // No object detected (distance >= 30 cm)
+                        end
                 end
-              else
-                begin
-                  car_entry <= 1'b0;
-                  car_exit <= 1'b0;
-                end
-            end
-          else
-            begin
-              car_entry <= 1'b0;
-              car_exit <= 1'b0;
-            end
         end
-    end
+
+    //Trigger
+    assign trig = (state == TRIGGER);
+
+    //Counter for 10 µs trigger pulse
+    always @(posedge clk)
+        begin
+            if (inIDLE)
+                counter <= 10'd0;
+            else
+                counter <= counter + 1;
+        end
+    assign trigcountDONE = (counter == ten_us);
+
+    //Get distance
+    always @(posedge clk)
+        begin
+            if (inWAIT)
+                distanceRAW <= 22'd0;
+            else if (inCOUNTECHO)
+                distanceRAW <= distanceRAW + 1;
+            else
+                distanceRAW <= distanceRAW;
+        end
 endmodule

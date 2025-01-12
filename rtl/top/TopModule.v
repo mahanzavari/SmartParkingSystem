@@ -10,7 +10,9 @@ module TopModule(
     output reg lot_full_light,      // Indicates when the parking lot is full
     output wire [3:0] parking_state,// parking current state
     output wire [7:0] seg_out,      // Seven-segment output
-    output wire [4:0] anode         // Anode signals for 7-segment display
+    output wire [4:0] anode,         // Anode signals for 7-segment display
+	 input wire echo,
+	 output trig
 );
 
 //     <------<< Internal wires >>------>
@@ -18,6 +20,8 @@ module TopModule(
     wire debounced_exit_signal;
 	 wire door_open_signal;
     wire lot_full_signal;
+	 wire entry_ultra;
+	 wire exit_ultra;
 
     wire clk_1Hz;
     wire clk_2Hz;
@@ -49,13 +53,33 @@ module TopModule(
         .button(~entry_sensor),
         .debounce(debounced_entry_signal)
     );
+//
+//     Debouncer exit_debouncer (
+//        .clk(clk),
+//        .reset_n(~reset),
+//        .button(ultra_exit),
+//        .debounce(debounced_exit_signal)
+//    );
 
-     Debouncer exit_debouncer (
+	wire measure;
+		refresher250ms refresher_inst (
         .clk(clk),
-        .reset_n(~reset),
-        .button(~exit_sensor),
-        .debounce(debounced_exit_signal)
+        .en(1'b1),    // Enable is always high
+        .measure(measure)
     );
+		UltraSonicSensor #(
+    .ten_us(10'd400)       // 10 µs at 40 MHz
+  ) sensor (
+    .clk(clk),             // 40 MHz clock
+    .rst(reset),             // Reset signal
+    .measure(measure),
+    .state(),              // State output (not used in this example)
+    .ready(ready),         // Ready signal
+    .echo(echo),           // Echo signal from HC-SR04
+    .trig(trig),           // Trigger signal to HC-SR04
+    .distanceRAW(distanceRAW), // Raw distance measurement
+    .exit_car(ultra_exit)    // Signal to indicate a car is exiting
+  );
 
 	  // <------<< FSM Module for Parking System >>------>
 	 
@@ -64,7 +88,7 @@ module TopModule(
         .reset(reset),
 		  .enable(1),
         .entry_sensor(debounced_entry_signal),
-        .exit_sensor(debounced_exit_signal),
+        .exit_sensor(ultra_exit),
         .exit_location(exit_location),
         .door_open(door_open_signal),
         .full_light(lot_full_signal),
@@ -75,19 +99,20 @@ module TopModule(
 	 
 	     // <------<< Door Status Logic >>------>
 
-    reg [4:0] door_open_timer = 5'b00000;
+    reg [5:0] door_open_timer = 6'b000000;
     reg door_active = 1'b0; // 0: Door closed, 1: Door open
+	 
 	 
 	 // Combined always block without reset
     always @(posedge clk_4Hz or posedge door_open_signal) begin
         if (door_open_signal) begin
-            door_open_timer <= 5'b00000;
+            door_open_timer <= 6'b000000;
             door_active <= 1'b1;
             door_status_light <= 1'b1;
-        end else if (door_active && door_open_timer < 5'b10011) begin
+        end else if (door_active && door_open_timer < 6'b100111) begin
             door_status_light <= ~door_status_light;
 				 door_open_timer <= door_open_timer + 5'b00001;
-        end else if (door_open_timer >= 5'b10011) begin
+        end else if (door_open_timer >= 6'b100111) begin
             door_active <= 1'b0;
             door_status_light <= 1'b0;
         end

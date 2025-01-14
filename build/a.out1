@@ -1,14 +1,23 @@
-**** module/scope: Debouncer
-     Flip-Flops   : 9
-     Logic Gates  : 35
-     EQUALITY[8]: 2 units
-     MUX[2]: 1 slices
+**** module/scope: SevenSegmentDisplay
+     Flip-Flops   : 2
+     Logic Gates  : 12
+     ADDER[2]: 1 units
+     MAGNITUDE[2]: 1 units
+     MUX[2]: 2 slices
+     LPM[5]: 2 unaccounted
+     LPM[14]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted
+**** module/scope: SevenSegmentDisplay.seven_seg
+     Flip-Flops   : 0
+     Logic Gates  : 0
 **** TOTALS
-     Flip-Flops   : 9
-     Logic Gates  : 35
-     EQUALITY[8]: 2 units
-     MUX[2]: 1 slices
+     Flip-Flops   : 2
+     Logic Gates  : 12
+     ADDER[2]: 1 units
+     MAGNITUDE[2]: 1 units
+     MUX[2]: 2 slices
+     LPM[5]: 2 unaccounted
+     LPM[14]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted

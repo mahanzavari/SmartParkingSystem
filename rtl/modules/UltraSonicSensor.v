@@ -20,10 +20,8 @@ the time from sending ultrasonic to returning.
 outputs: 
 - When the distanceRAW value is below ENTRY_THRESHOLD, the car_entry signal is asserted.
 - When the distanceRAW value is above EXIT_THRESHOLD, the car_exit signal is asserted.
-
-
-    Formula: uS / 58 = centimeters or uS / 148 =inch; or: the 
-    range = high level time * velocity (340M/S) / 2,
+Formula: uS / 58 = centimeters or uS / 148 =inch; or: the 
+range = high level time * velocity (340M/S) / 2,
 Attention : 
     - When tested objects, the range of area is not less than 0.5 square meters 
 and the plane requests as smooth as possible, otherwise ,it will affect the 
@@ -39,10 +37,10 @@ module UltraSonicSensor#(
     output reg [1:0] state,
     output ready,
     //HC-SR04 signals
-    input echo, //JA1
-    output trig, //JA2
+    input echo,  //ECHO
+    output trig, //TRIGGER
     output reg [21:0] distanceRAW,
-    output reg exit_car  // Added exit_car output
+    output reg exit_car  // indicates a car exit
 );
 
     localparam IDLE = 2'b00,

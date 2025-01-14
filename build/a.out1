@@ -1,23 +1,24 @@
-**** module/scope: SevenSegmentDisplay
-     Flip-Flops   : 2
-     Logic Gates  : 12
-     ADDER[2]: 1 units
-     MAGNITUDE[2]: 1 units
-     MUX[2]: 2 slices
-     LPM[5]: 2 unaccounted
-     LPM[14]: 1 unaccounted
+**** module/scope: UltraSonicSensor
+     Flip-Flops   : 35
+     Logic Gates  : 277
+     ADDER[10]: 1 units
+     ADDER[22]: 1 units
+     EQUALITY[2]: 5 units
+     EQUALITY[10]: 1 units
+     MAGNITUDE[22]: 1 units
+     MUX[2]: 63 slices
+     LPM[5]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted
-**** module/scope: SevenSegmentDisplay.seven_seg
-     Flip-Flops   : 0
-     Logic Gates  : 0
 **** TOTALS
-     Flip-Flops   : 2
-     Logic Gates  : 12
-     ADDER[2]: 1 units
-     MAGNITUDE[2]: 1 units
-     MUX[2]: 2 slices
-     LPM[5]: 2 unaccounted
-     LPM[14]: 1 unaccounted
+     Flip-Flops   : 35
+     Logic Gates  : 277
+     ADDER[10]: 1 units
+     ADDER[22]: 1 units
+     EQUALITY[2]: 5 units
+     EQUALITY[10]: 1 units
+     MAGNITUDE[22]: 1 units
+     MUX[2]: 63 slices
+     LPM[5]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted

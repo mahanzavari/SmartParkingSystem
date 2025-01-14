@@ -8,26 +8,26 @@ module TopModule(
     input wire [1:0] exit_location, // Location of the car exiting
     output reg door_status_light,   // Indicates the door status (blinking when open)
     output reg lot_full_light,      // Indicates when the parking lot is full
-    output wire [3:0] parking_state,// parking current state
-    output wire [7:0] seg_out,      // Seven-segment output
-    output wire [4:0] anode,         // Anode signals for 7-segment display
-	 input wire echo,
-	 output trig
+    output wire [3:0] parking_state,
+    output wire [7:0] seg_out,      
+    output wire [4:0] anode,         
+	input wire echo,
+	output trig
 );
 
-//     <------<< Internal wires >>------>
+    // <------<< Internal wires >>------>
     wire debounced_entry_signal;
     wire debounced_exit_signal;
-	 wire door_open_signal;
+	wire door_open_signal;
     wire lot_full_signal;
-	 wire entry_ultra;
-	 wire exit_ultra;
+	wire entry_ultra;
+	wire exit_ultra;
 
     wire clk_1Hz;
     wire clk_2Hz;
-	 wire clk_4Hz;
+	wire clk_4Hz;
     wire clk_50Hz;
-  	 wire clk_500Hz;
+  	wire clk_500Hz;
 
     wire [2:0] parking_capacity;
     wire [1:0] best_slot;
@@ -36,7 +36,8 @@ module TopModule(
 		door_status_light = 1'b0;
 		lot_full_light = 1'b0;
 	end
- // <------<< Helper modules >>------>
+
+    // <------<< Helper modules >>------>
 
 	ClockDivider clock_divider (
 		.clk(clk),
@@ -53,35 +54,28 @@ module TopModule(
         .button(~entry_sensor),
         .debounce(debounced_entry_signal)
     );
-//
-//     Debouncer exit_debouncer (
-//        .clk(clk),
-//        .reset_n(~reset),
-//        .button(ultra_exit),
-//        .debounce(debounced_exit_signal)
-//    );
 
 	wire measure;
 		refresher250ms refresher_inst (
         .clk(clk),
-        .en(1'b1),    // Enable is always high
+        .en(1'b1),
         .measure(measure)
     );
 		UltraSonicSensor #(
-    .ten_us(10'd400)       // 10 µs at 40 MHz
+    .ten_us(10'd400)       
   ) sensor (
-    .clk(clk),             // 40 MHz clock
-    .rst(reset),             // Reset signal
+    .clk(clk),             
+    .rst(reset),           
     .measure(measure),
-    .state(),              // State output (not used in this example)
-    .ready(ready),         // Ready signal
-    .echo(echo),           // Echo signal from HC-SR04
-    .trig(trig),           // Trigger signal to HC-SR04
-    .distanceRAW(distanceRAW), // Raw distance measurement
-    .exit_car(ultra_exit)    // Signal to indicate a car is exiting
+    .state(),              
+    .ready(ready),         
+    .echo(echo),           
+    .trig(trig),           
+    .distanceRAW(distanceRAW),
+    .exit_car(ultra_exit)    
   );
 
-	  // <------<< FSM Module for Parking System >>------>
+	// <------<< FSM Module for Parking System >>------>
 	 
     ParkingFSM parking_fsm (
         .clk(clk),
@@ -97,13 +91,13 @@ module TopModule(
         .best_slot(best_slot)
     );
 	 
-	     // <------<< Door Status Logic >>------>
+	// <------<< Door Status Logic >>------>
 
     reg [5:0] door_open_timer = 6'b000000;
     reg door_active = 1'b0; // 0: Door closed, 1: Door open
 	 
 	 
-	 // Combined always block without reset
+	// <------<< Combined always block without reset >>------>
     always @(posedge clk_4Hz or posedge door_open_signal) begin
         if (door_open_signal) begin
             door_open_timer <= 6'b000000;

@@ -17,59 +17,109 @@ long they takes to go back
 The formula that is used is pretty simple :  
 IF the signal back, through high level , time of high output IO duration is 
 the time from sending ultrasonic to returning. 
-    Formula: uS / 58 = centimeters or uS / 148 =inch; or: the 
-    range = high level time * velocity (340M/S) / 2,
+outputs: 
+- When the distanceRAW value is below ENTRY_THRESHOLD, the car_entry signal is asserted.
+- When the distanceRAW value is above EXIT_THRESHOLD, the car_exit signal is asserted.
+Formula: uS / 58 = centimeters or uS / 148 =inch; or: the 
+range = high level time * velocity (340M/S) / 2,
 Attention : 
     - When tested objects, the range of area is not less than 0.5 square meters 
 and the plane requests as smooth as possible, otherwise ,it will affect the 
 results of measuring.
 */
-module UltrasonicSensor (
-    input clk,                  // System clock
-    input reset,                // Reset signal
-    input echo,                 // Echo signal from sensor
-    output reg trig,            // Trigger signal to sensor
-    output reg detected         // Car detected (1 = Yes, 0 = No)
+module UltraSonicSensor#(
+    parameter ten_us = 10'd400,  // 10 µs at 40 MHz (400 clock cycles)
+    parameter threshold_RAW = 22'd69600  // Threshold for 30 cm at 40 MHz
+)(
+    input clk, //40 MHz
+    input rst,
+    input measure,
+    output reg [1:0] state,
+    output ready,
+    //HC-SR04 signals
+    input echo,  //ECHO
+    output trig, //TRIGGER
+    output reg [21:0] distanceRAW,
+    output reg exit_car  // indicates a car exit
 );
 
-    reg [19:0] counter;         // Counter for timing
-    reg [19:0] echo_time;       // Time measured for echo
-    reg state;                  // State for sensor control (0 = trigger, 1 = measure)
+    localparam IDLE = 2'b00,
+              TRIGGER = 2'b01,
+              WAIT = 2'b11,
+              COUNTECHO = 2'b10;
+    wire inIDLE, inTRIGGER, inWAIT, inCOUNTECHO;
+    reg [9:0] counter;
+    wire trigcountDONE;
 
-    parameter TRIG_TIME = 20'd1000;  // Trigger pulse duration
-    parameter MAX_TIME = 20'd60000; // Max time to consider an object
+    //Ready
+    assign ready = inIDLE;
+    
+    //Decode states
+    assign inIDLE = (state == IDLE);
+    assign inTRIGGER = (state == TRIGGER);
+    assign inWAIT = (state == WAIT);
+    assign inCOUNTECHO = (state == COUNTECHO);
 
-    always @(posedge clk or posedge reset) begin
-        if (reset) begin
-            trig <= 0;
-            detected <= 0;
-            counter <= 0;
-            echo_time <= 0;
-            state <= 0;
-        end else begin
-            case (state)
-                0: begin
-                    // Trigger state: Send a 10us pulse
-                    trig <= (counter < TRIG_TIME); // asset trig to 1 while this condition is True
-                    counter <= counter + 1; //ensuring that the trigger time interval is exactly 10 µs 
-                    if (counter == TRIG_TIME) begin
-                        counter <= 0;
-                        state <= 1;
-                    end
+    //State transactions
+    always @(posedge clk or posedge rst)
+        begin
+            if (rst)
+                begin
+                    state <= IDLE;
+                    exit_car <= 0;  // Initialize exit_car on reset
                 end
-                1: begin
-                    // Measure echo time
-                    if (echo) begin
-                        echo_time <= echo_time + 1; // calculating the echotime when the sensor is receiving the Echo
-                    end else if (echo_time > 0) begin
-                        // Check if distance is within range
-                        detected <= (echo_time < MAX_TIME); // detected if the object is within the sensor's range
-                        echo_time <= 0; // reset
-                        state <= 0;
-                    end
+            else
+                begin
+                    case (state)
+                        IDLE:
+                            begin
+                                state <= (measure & ready) ? TRIGGER : state;
+                            end
+                        TRIGGER:
+                            begin
+                                state <= (trigcountDONE) ? WAIT : state;
+                            end
+                        WAIT:
+                            begin
+                                state <= (echo) ? COUNTECHO : state;
+                            end
+                        COUNTECHO:
+                            begin
+                                state <= (~echo) ? IDLE : state;
+                            end
+                    endcase
+                    // Object detection logic
+                    if (inIDLE && ready)
+                        begin
+                            if (distanceRAW < threshold_RAW)
+                                exit_car <= 1;  // Object detected (distance < 30 cm)
+                            else
+                                exit_car <= 0;  // No object detected (distance >= 30 cm)
+                        end
                 end
-            endcase
         end
-    end
-endmodule
 
+    //Trigger
+    assign trig = (state == TRIGGER);
+
+    //Counter for 10 µs trigger pulse
+    always @(posedge clk)
+        begin
+            if (inIDLE)
+                counter <= 10'd0;
+            else
+                counter <= counter + 1;
+        end
+    assign trigcountDONE = (counter == ten_us);
+
+    //Get distance
+    always @(posedge clk)
+        begin
+            if (inWAIT)
+                distanceRAW <= 22'd0;
+            else if (inCOUNTECHO)
+                distanceRAW <= distanceRAW + 1;
+            else
+                distanceRAW <= distanceRAW;
+        end
+endmodule

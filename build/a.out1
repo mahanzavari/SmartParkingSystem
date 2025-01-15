@@ -1,14 +1,24 @@
-**** module/scope: Debouncer
-     Flip-Flops   : 9
-     Logic Gates  : 35
-     EQUALITY[8]: 2 units
-     MUX[2]: 1 slices
+**** module/scope: UltraSonicSensor
+     Flip-Flops   : 35
+     Logic Gates  : 277
+     ADDER[10]: 1 units
+     ADDER[22]: 1 units
+     EQUALITY[2]: 5 units
+     EQUALITY[10]: 1 units
+     MAGNITUDE[22]: 1 units
+     MUX[2]: 63 slices
+     LPM[5]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted
 **** TOTALS
-     Flip-Flops   : 9
-     Logic Gates  : 35
-     EQUALITY[8]: 2 units
-     MUX[2]: 1 slices
+     Flip-Flops   : 35
+     Logic Gates  : 277
+     ADDER[10]: 1 units
+     ADDER[22]: 1 units
+     EQUALITY[2]: 5 units
+     EQUALITY[10]: 1 units
+     MAGNITUDE[22]: 1 units
+     MUX[2]: 63 slices
+     LPM[5]: 1 unaccounted
      LOG[13]: 1 unaccounted
      LOG[14]: 1 unaccounted

@@ -66,7 +66,7 @@ This project is open-source and available under the MIT License. Feel free to mo
 
 For any questions or issues, please contact the contributors:
 - **Mahan Zavari**: [mahanzavari@gmail.com]
-- **Amin Rezaeeyan**: [aminrezaeeyan@gmail.com]
+- **Amin Rezaeeyan**: [rezaeeyanamin@gmail.com]
 
 ---
 
